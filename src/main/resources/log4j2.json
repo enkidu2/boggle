@@ -1,0 +1,27 @@
+{
+  "configuration": {
+    "name": "Default",
+    "status" : "error",
+    "packages": "jgc",
+    "ThresholdFilter": {
+      "level": "debug"
+    },
+    "appenders": {
+      "File": {
+        "name": "FileLogger",
+        "filename": "logs/boggle.log",
+        "PatternLayout": {
+          "pattern": "%d %p [%c] -- %m%n"
+        }
+      }
+    },
+    "loggers": {
+      "root": {
+        "level": "debug",
+        "AppenderRef": {
+          "ref": "FileLogger"
+        }
+      }
+    }
+  }
+}
