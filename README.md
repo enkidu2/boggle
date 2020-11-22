@@ -12,7 +12,7 @@ Easily adaptable to any set of dictionaries with a config file.
 Implemented with a standard Trie.  Fairly fast at solving about 6,000 standard boards/second on a 2.8GHz cpu.  Uses dictionary directed editing which is perhaps too helpful, but it hasn't personally helped my scores overly much.
 
 * Current command line options:
-...
+```
 Usage: boggle [-hsV] [-bj=<boardJson>] [-bs=<boardString>] [-d=<dictSize>]
               [-l=<logLevel>] [-n=<N>] [-t=<time>] [-w=<wordLen>]
 Game of Boggle (c) 1972 Parker Brothers
@@ -30,4 +30,4 @@ Game of Boggle (c) 1972 Parker Brothers
   -t, --time=<time>         Time limit in seconds.  The default is 180s.
   -V, --version             Print version information and exit.
   -w, --wordLen=<wordLen>   Minimum word length.  The default is 3.
-...
+```
