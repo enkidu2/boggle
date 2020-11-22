@@ -66,7 +66,6 @@ public class TermServices {
     }
 
     String[] helpText = {
-         // "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
             "A Standard Boggle game, with the same dice and scoring as the Parker Brothers",
             "4x4 board game.  Play is extended to allow for different sized boards, time",
             "limits, real time corrections and pausing.",
@@ -77,7 +76,7 @@ public class TermServices {
             "displayed.  If a word already been guessed, the original guess will be ",
             "highlighted in place in the list.  If a word being entered does not spell a",
             "word from the dictionary, or can not be formed from the board, it will be",
-            "highlighted in place while typing.  The current word can be discarded by using " +
+            "highlighted in place while typing.  The current word can be discarded by using ",
             "'enter' or 'backspace' over the incorrect letters.",
             "",
             "The letter 'q' will assume to be followed by an optional 'u' which does not",
@@ -98,11 +97,10 @@ public class TermServices {
             "be replayed by using this option with the board strings dumped into boggle.log.",
             "",
             "Example:",
-            "   java -FIX THIS -l INFO -dXXL -bs tslneiaentrtbeso",
+            "   java -cp \"$PWD/target/lib/*\" -jar \"$PWD/target/boggle.jar\" -l INFO -dXXL -bs tslneiaentrtbeso",
             "",
             "   This will produce a board and dictionary which will have a max score of 3258.",
             "",
-         // "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
 };
 
     public TermServices(boolean useSwing, String commandHelpMsg) {

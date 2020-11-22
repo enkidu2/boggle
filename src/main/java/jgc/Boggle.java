@@ -17,30 +17,20 @@ import java.util.stream.Collectors;
 
 /**
  * TODO:
- *  show cursor where typing
  *  make UI pretty
- *  add unit/func tests
  *  clean/reindent/org code
- *  repackage code to make it shippable
  *  check licenses
- *  put into github
  *  try a swing/awt UI?
- *  check competition
  *  too many errors are swallowed
- *  foreign dictionaries
- *  doc dependent packages
- *  inject dictionaries?
+ *  foreign dictionaries - inject dictionaries
  *  bugs:
  *    hitting return multiple times scrolls down
  *    hitting return multiple times gets stuck and doesn't go to next col
  *    upper case board strings crash
  *    make top of third column higher
  *    make bottom of third column higher
- *    FIXED: unable to guess 'sletreat' using -bs tslneiaentrtbeso
  *    clean up FIX THIS comments
  *    clean up access protections
- *    enable pom.xml to run tests
- *    khz & kHz are both added to dictionary - how to eliminate this efficiently? - strip words with upper cased letters...
  */
 
 @Command(name = "boggle", mixinStandardHelpOptions = true, version = "boggle 1.0",
