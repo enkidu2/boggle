@@ -42,7 +42,7 @@ class DictionaryTest {
     void timeDictionaryInits() {
         long[] best = {99999, 99999, 99999, 99999, 99999};
         long[] len = {0, 0, 0, 0, 0};
-        for (int loop = 1; loop <= 5; loop++) {
+        for (int loop = 1; loop <= 3; loop++) {
             System.out.println("---------------- loop #" + loop);
             System.gc();
             try { Thread.sleep(1000); } catch (Exception e) { }

@@ -256,8 +256,10 @@ public class Boggle implements Callable<Integer> {
         return list;
     }
 
+    /**
+     * Data logged after each game
+     */
     protected void logData() {
-
         log.info("---------- game summary ----------");
         log.info("number of words: " + solutionSet.size());
         log.info("total possible score: " + score(solutionSet));
@@ -290,6 +292,9 @@ public class Boggle implements Callable<Integer> {
      * Finds all words which can be found on the board.  Assumes board is NxN, minimum word size is wordLen,
      * and the dictionary in Trie format is "dict."
      *
+     * 'Q' is not assumed to be followed by a 'u'.  Instead, an optional 'u' will always be placed after
+     * any q's on the board.  For example, the board { qi,at }, can form quit or qat.
+     *
      * Sets this.solutionSet, this.solutionList and this.solutionDictionary
      *
      * @return
@@ -300,13 +305,11 @@ public class Boggle implements Callable<Integer> {
         Set<String> set = new HashSet<>(1000);
         List<String> list = new ArrayList(1000);
         char[] buf = new char[N*N+1];
-        long start = System.currentTimeMillis();
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
                 solve(buf, i, j, 0, null, set, list);
             }
         }
-        long end = System.currentTimeMillis();
         this.solutionSet = set;
         this.solutionList = list;
         this.solutionDictionary = Dictionary.getDictionary(this.solutionList);
@@ -467,11 +470,17 @@ public class Boggle implements Callable<Integer> {
         timer = newTimer();
     }
 
+    /**
+     * Cancels timer after displaying a ^Q alert.
+     */
     private void pauseTimer() {
         ts.alert("^q to continue");
         timer.cancel();
     }
 
+    /**
+     * Resumes timer from previous timeLeft.
+     */
     private void restartTimer() {
         ts.message("Type '?' for help");
         timer.cancel();
@@ -480,6 +489,12 @@ public class Boggle implements Callable<Integer> {
         timer = newTimer();
     }
 
+    /**
+     * The timer merely sends the caller a simple interrupt after the time is up, while updating the
+     * displayed clock every TIMER_PERIOD milliseconds.
+     *
+     * @return
+     */
     private Timer newTimer() {
         Thread parent = Thread.currentThread();
         Timer timer = new Timer();
@@ -504,6 +519,13 @@ public class Boggle implements Callable<Integer> {
         return timer;
     }
 
+    /**
+     * True if the word is of the right length and entirely alphabetic.  ts.readWord probably takes care of
+     * non-alphabetic characters.
+     *
+     * @param word
+     * @return
+     */
     protected boolean isValid(String word) {
         if (word == null || word.length() < wordLen) {
             return false;
@@ -516,10 +538,18 @@ public class Boggle implements Callable<Integer> {
         return true;
     }
 
+    /**
+     * True if the word is not a word in the dictionary, or is a prefix of a possible word.
+     * @param word
+     * @return
+     */
     protected boolean isBadPartial(String word) {
         return StringUtils.isNotBlank(word) && solutionDictionary.findWordTree(word) == null;
     }
 
+    /**
+     * Stop timer, shut down UI.
+     */
     public void close() {
         if (timer != null) {
             timer.cancel();
@@ -538,7 +568,7 @@ public class Boggle implements Callable<Integer> {
      *     allow for pause, continue, quit, help
      * } until timeout
      * show all solutions, best word
-     * reset screen
+     * reset screen, exit with full solutions displayed.
      */
     protected void play() {
         fillBoard();
@@ -581,7 +611,7 @@ public class Boggle implements Callable<Integer> {
                         // do nothing
                         continue;
                     default:
-                        log.debug("FIX THIS, unknown response: " + p);
+                        log.error("unknown response: " + p);
                 }
                 if (redo != null) {
                     ts.showSingleWord(redoNum, redo, false);
@@ -641,6 +671,11 @@ public class Boggle implements Callable<Integer> {
         return spec.commandLine().getUsageMessage(Help.Ansi.OFF);
     }
 
+    /**
+     * picocli entry point to handle command line processing.
+     * @return
+     * @throws Exception
+     */
     @Override
     public Integer call() throws Exception {
         init();

@@ -15,9 +15,6 @@ public class Trie {
     private TrieNode root = new TrieNode();
     private int count = 0;  // number of words (leaf nodes)
 
-    // Simple array[25] plus a flag.  Note that each node doesn't know what word it represents.
-
-
     public void insert(String str) {
         insert(str.toCharArray());
     }

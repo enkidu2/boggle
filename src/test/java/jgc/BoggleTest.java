@@ -83,11 +83,11 @@ class BoggleTest {
 
     /**
      * The performance of solve() is incredibly uneven.  Sure, it's fast - but fluctuates 20% each time it's called,
-     * despite having no I/O.  It's likely due to object proliferation in Boggle.solve() (it creates many millions of
+     * despite having no I/O.  It's likely due to object proliferation (it creates many millions of
      * strings - and perhaps locking contention w/gc?)  Swapping solve() to use a Trie w/no new Strings made it run
      * slower.
      *
-     * On my 4 year old laptop it runs at 5700->6800 solutions/sec with the standard dictionary.
+     * On my 4 year old laptop (2.8GHz) it runs at 5700->6800 solutions/sec with the standard dictionary.
      */
     @Test
     void solvePerformance() {
@@ -134,7 +134,7 @@ class BoggleTest {
         long vscore = 0;
         for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
             System.out.println("dictionary:    " + ds + " (" + size[j] + "), \tsolution size: " + ssize[j] +
-                    ", \trate: " + perfs[j] + "/sec\tvariance: " + (variance[j] / (LOOPMAX-1)));
+                    ", \tbest rate: " + perfs[j] + "/sec\tvariance: " + (variance[j] / (LOOPMAX-1)));
             vscore += (variance[j] / LOOPMAX);
             j++;
         }
@@ -154,7 +154,6 @@ class BoggleTest {
 
     @Test
     void score() {
-        // assertNotNull(
         Boggle b = getBoggle();
         for (String s : Arrays.asList("help", "helps", "helping", "helpings", "123456789")) {
             System.out.println("score for: " + s + " = " + b.score(s));

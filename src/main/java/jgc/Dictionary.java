@@ -11,6 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * Reads a list of words, filters or converts non-ASCII characters and places most of them into a Trie.
+ * Ignores proper nouns, or any word with a capital letter.  Most accented letters are converted into
+ * their non-accented equivalents, such as éclair becomes eclair.  Any word with an accented consonants
+ * such as cedillas (ç,) are dropped (e.g. français.)  With the exception of eñe, which is converted to
+ * 'n.'  (Thank you El Niño...)
+ * */
+
 public class Dictionary {
 
     static Logger log = LogManager.getLogger(Dictionary.class);
@@ -119,14 +127,13 @@ public class Dictionary {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(fname))) {
             String word;
             while ((word = reader.readLine()) != null) {
-                String FIXTHIS = word;
                 word = stripAccents(word);
                 if (isUpperCased(word)) {
                     continue;   // skip proper nouns and mixed cased words, such as mHz
                 }
                 if (nonASCIIPattern.matcher(word).matches()) {
                     // useful to see how much of dictionary is being ignored (mostly apostrophes)
-                    // log.debug("FIX THIS, elided: " + word);
+                    // log.debug("elided: " + word);
                     continue;   // skip contractions, foreign letters
                 }
                 if (word.contains("khz")) {

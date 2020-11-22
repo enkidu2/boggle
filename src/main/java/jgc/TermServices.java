@@ -25,6 +25,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Text based UI using lanterna library.  Runs in either current terminal window, or will pop
+ * up a new terminal.  See -s option.
+ *
+ * Most of the effort is in keeping the cursor in the correct position.  Lanterna will automatically
+ * position the cursor after the last displayed character.  Boggle will try to always move the cursor
+ * to where it's anticipated the next character will be typed by the user.  For example, updating the
+ * clock each second will necessitate the cursor being repositioned.  Or, entering a valid word should
+ * move the cursor to the next slot in the displayed solution list, which may be in a new column.
+ *
+ * cursor
+ */
 public class TermServices {
 
     private static final Logger log = LogManager.getLogger(TermServices.class);
@@ -50,10 +62,12 @@ public class TermServices {
     int cursorColumn;   // cursor X coord - need to reset after displaying elsewhere
     int cursorRow;      // cursor Y coord
 
+    // types of read responses from readWord()
     enum ReadType {
         STRING, PREVIOUS, HELP, PAUSE, CONTINUE
     }
 
+    // returned by prompt() and readWord()
     @AllArgsConstructor
     @Getter
     class ReadValue {
@@ -97,7 +111,7 @@ public class TermServices {
             "be replayed by using this option with the board strings dumped into boggle.log.",
             "",
             "Example:",
-            "   java -cp \"$PWD/target/lib/*\" -jar \"$PWD/target/boggle.jar\" -l INFO -dXXL -bs tslneiaentrtbeso",
+            "   java -cp \"./target/lib/*\" -jar \"./target/boggle.jar\" -l INFO -dXXL -bs tslneiaentrtbeso",
             "",
             "   This will produce a board and dictionary which will have a max score of 3258.",
             "",
@@ -116,7 +130,7 @@ public class TermServices {
             }
 
             if (terminal instanceof UnixTerminal) {
-                stty("-ixon");
+                stty("-ixon");  // enable ^s/^q scroll lock
             }
             tGraphics = terminal.newTextGraphics();
             TerminalSize size = terminal.getTerminalSize();
@@ -145,6 +159,10 @@ public class TermServices {
         }
     }
 
+    /**
+     * display the given board in the middle of the terminal
+     * @param board
+     */
     void displayBoard(List<String> board) {
         boardHeight = board.size();
         boardWidth = board.get(0).length();
@@ -160,6 +178,9 @@ public class TermServices {
         }
     }
 
+    /**
+     * Overwrite board with spaces.
+     */
     void clearBoard() {
         String format = spaces(boardWidth);
         try {
@@ -172,6 +193,15 @@ public class TermServices {
         }
     }
 
+    /**
+     * Update displayed status
+     * @param wordCount
+     * @param maxScore
+     * @param curCount
+     * @param curScore
+     * @param maxWord
+     * @param maxWordScore
+     */
     void displayStatus(int wordCount, int maxScore, int curCount, int curScore, String maxWord, int maxWordScore) {
         tGraphics.putString(STATUS_X, STATUS_Y, "score: "  + curScore + "    ");
         tGraphics.putString(STATUS_X, STATUS_Y + 1, "count: "  + curCount + "    ");
@@ -268,6 +298,12 @@ public class TermServices {
         terminal.setCursorPosition(cursorColumn, cursorRow);
     }
 
+    /**
+     * Display prompt string and read a response.
+     * @param p
+     * @return
+     * @throws InterruptedException
+     */
     ReadValue prompt(String p) throws InterruptedException {
         ReadValue retval = null;
         tGraphics.putString(0, tHeight-1, p + "  ");
@@ -424,7 +460,6 @@ public class TermServices {
                 if (count > 0) {
                     p = prompt("hit return to continue:");
                 } else {
-                    // needed? FIX THIS
                     clearWordList(pair.getRight());
                     p = prompt("hit return to exit:");
                 }
@@ -452,7 +487,24 @@ public class TermServices {
         }
     }
 
-    private Pair<Integer,Integer> showWordList(List<String> solution, List<String> guesses, int startWordIx, int startPos, boolean displaySingle, boolean useReverse) {
+    /**
+     * Display a list of words, such as guesses or the full solution.  These go in multiple columns, which may have
+     * different start points to work around the centrally displayed board.  If the list doesn't fit on the screen it
+     * will be paginated.  ^P can be used to return to a previous page.  Solution words which are also in the guess
+     * list will be highlighted.
+     *
+     * Also used to display a single word
+     *
+     * @param solution  All words in the solution list
+     * @param guesses   Words which have been guessed at, so far
+     * @param startWordIx   The word number to start with
+     * @param startPos      Where to display on screen (used for single word only)
+     * @param displaySingle Show only a single word
+     * @param useReverse    Display all words in reverse
+     * @return Pair of: last word index from list displayed, screen index of last word
+     */
+    private Pair<Integer,Integer> showWordList(List<String> solution, List<String> guesses, int startWordIx,
+                                               int startPos, boolean displaySingle, boolean useReverse) {
         List<String> words = (solution != null) ? solution : guesses;
         int count = 0;
         Pair<Integer,Integer> prevCoords = null;
@@ -486,7 +538,7 @@ public class TermServices {
                         if (nextCoords != null) {
                             setCursorPos(nextCoords.getLeft(), nextCoords.getRight());
                         }
-                        word += spaces(WORD_WIDTH - word.length()); // FIX THIS
+                        word += spaces(WORD_WIDTH - word.length());
                     }
                 } catch (IOException io) {
                     io.printStackTrace();
@@ -525,7 +577,7 @@ public class TermServices {
                     return null;
                 }
                 if (x >= BOARD_X && x <= BOARD_X + boardWidth + 2) {
-                    y = y2; // FIX THIS - what if y2 is > tHeight-2?
+                    y = y2;
                 }
                 else {
                     y = WORD_Y;
@@ -539,21 +591,26 @@ public class TermServices {
         return CharBuffer.allocate( spaces ).toString().replace( '\0', ' ' );
     }
 
-    protected static void stty(String args) throws IOException, InterruptedException {
-        exec("stty " + args + " < /dev/tty");
-    }
-
-    private static void exec(String cmd) throws IOException, InterruptedException {
-        exec(new String[] { "sh", "-c", cmd });
+    /**
+     * ^s/^q flow control is a holdout from teletype days and 300 baud modems, when characters were displayed far
+     * more slowly than we could type.  Boggle uses it to halt and resume the clock.  As we can now display at
+     * 30M+ characters/second, it's functionality has been disabled and buried into stty.
+     *
+     * @param args
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    protected void stty(String args) throws IOException, InterruptedException {
+        exec(new String[] { "sh", "-c", "stty " + args + " < /dev/tty"});
     }
 
     /**
-     * Run a command.  Returns output only upon an error, which is thrown as a RuntimeException.
+     * Runs a command.  Only returns output upon an error.
      * @param cmd
      * @throws IOException
      * @throws InterruptedException
      */
-    private static void exec(String[] cmd) throws IOException, InterruptedException {
+    private void exec(String[] cmd) throws IOException, InterruptedException {
         Process p = Runtime.getRuntime().exec(cmd);
 
         try (InputStream in = p.getInputStream(); InputStream err = p.getErrorStream(); ByteArrayOutputStream bout = new ByteArrayOutputStream()) {
