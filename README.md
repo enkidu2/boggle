@@ -1,11 +1,11 @@
 # boggle
-Classic Boggle game with ASCII/terminal graphics, implemented in Java.
+Classic Boggle game with ASCII/terminal graphics written in Java.
 
 Created as an exercise in Java, maven, git, etc.  
 
 Requires the following dictionary packages to be installed:
 
-* apt install wamerican wamerican-huge wamerican-insane wamerican-large wamerican-small
+* sudo apt install wamerican wamerican-huge wamerican-insane wamerican-large wamerican-small
 
 Easily adaptable to any set of dictionaries with a config file.
 

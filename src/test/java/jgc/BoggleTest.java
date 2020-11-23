@@ -97,7 +97,7 @@ class BoggleTest {
         int[] size = {0, 0, 0, 0, 0};
         int[] ssize = {0, 0, 0, 0, 0};
 
-        int LOOPMAX = 3;
+        int LOOPMAX = 5;
         int SOLVEMAX = 2000;
 
         for (int loop = 1; loop <= LOOPMAX; loop++) {
@@ -159,6 +159,19 @@ class BoggleTest {
             System.out.println("score for: " + s + " = " + b.score(s));
         }
         b.close();
+    }
+
+    @Test
+    void testSolve() {
+        Boggle b = getBoggle(Dictionary.DictSize.XXL);
+        String x = "tslneiaentrtbeso";
+        b.boardString = x;
+        b.fillBoard();
+        b.solve();
+        assertEquals(1142, b.solutionList.size());
+        assertEquals("aer", b.solutionList.get(0));
+        assertEquals(b.solutionList.size(), b.solutionSet.size());
+        assertEquals("tst", b.solutionList.get(b.solutionSet.size() - 1));
     }
 
     @Test

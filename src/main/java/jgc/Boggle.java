@@ -301,17 +301,17 @@ public class Boggle implements Callable<Integer> {
      */
     // uses board, dict.trie
     protected void solve() {
+        Set<String> set = new HashSet<>(300);
         // using TreeSet is twice as slow as using a HashSet/ArrayList combo
-        Set<String> set = new HashSet<>(1000);
-        List<String> list = new ArrayList(1000);
         char[] buf = new char[N*N+1];
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
-                solve(buf, i, j, 0, null, set, list);
+                solve(buf, i, j, 0, null, set);
             }
         }
         this.solutionSet = set;
-        this.solutionList = list;
+        this.solutionList = new ArrayList(set);
+        Collections.sort(this.solutionList);
         this.solutionDictionary = Dictionary.getDictionary(this.solutionList);
     }
 
@@ -324,13 +324,10 @@ public class Boggle implements Callable<Integer> {
      * @param root  Current dictionary node
      * @param set   A set of all the words found thus far
      */
-    protected void solve(char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set, List<String> list) {
+    protected void solve(char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set) {
         if (root != null && root.isEnd() && k >= wordLen) {
             String word = new String(soFar, 0, k);  // a lot of object proliferation
-            if (!set.contains(word)) {
-                set.add(word);
-                list.add(word); // faster to keep a separate list
-            }
+            set.add(word);
         } // keep going, as the word may continue to grow
 
         // if we're at 'q', try adding an optional 'u' and continue - ad also continue w/o the 'u'
@@ -338,7 +335,7 @@ public class Boggle implements Callable<Integer> {
             TrieNode q = dict.findWordTree(root, 'u');
             if (q != null) {
                 soFar[k] = 'u';
-                solve(soFar, oldi, oldj, k + 1, q, set, list);
+                solve(soFar, oldi, oldj, k + 1, q, set);
             }
         }
 
@@ -352,9 +349,9 @@ public class Boggle implements Callable<Integer> {
             if (fragment != null) {
                 soFar[k] = board[i][j];
                 board[i][j] = 0;    // no going back onto a square
-                solve(soFar, i, j, k + 1, fragment, set, list);
+                solve(soFar, i, j, k + 1, fragment, set);
                 board[i][j] = soFar[k];
-                soFar[k] = 0;
+                // soFar[k] = 0;
             }
         }
     }
