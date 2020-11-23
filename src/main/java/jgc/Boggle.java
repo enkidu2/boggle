@@ -285,7 +285,7 @@ public class Boggle implements Callable<Integer> {
     // are the coords in range and is that board location empty?
     private boolean isValid(int i, int j) {
         if (i < 0 || i >= N || j < 0 || j >= N) return false;
-        return board[i][j] != 0;
+        return board[i][j] != 0;    // == 0 if already visited
     }
 
     /**
@@ -326,8 +326,7 @@ public class Boggle implements Callable<Integer> {
      */
     protected void solve(char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set) {
         if (root != null && root.isEnd() && k >= wordLen) {
-            String word = new String(soFar, 0, k);  // a lot of object proliferation
-            set.add(word);
+            set.add(root.getWord());
         } // keep going, as the word may continue to grow
 
         // if we're at 'q', try adding an optional 'u' and continue - ad also continue w/o the 'u'
@@ -345,13 +344,12 @@ public class Boggle implements Callable<Integer> {
             if (!isValid(i, j)) {
                 continue;
             }
-            TrieNode fragment = dict.findWordTree(root, board[i][j]);
+            TrieNode fragment = dict.findWordTree(root, board[i][j], null);
             if (fragment != null) {
                 soFar[k] = board[i][j];
                 board[i][j] = 0;    // no going back onto a square
                 solve(soFar, i, j, k + 1, fragment, set);
                 board[i][j] = soFar[k];
-                // soFar[k] = 0;
             }
         }
     }

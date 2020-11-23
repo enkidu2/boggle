@@ -9,7 +9,7 @@ Requires the following dictionary packages to be installed:
 
 Easily adaptable to any set of dictionaries with a config file.
 
-Implemented with a standard Trie.  Fairly fast at solving about 6,000 standard boards/second on a 2.8GHz cpu.  Uses dictionary directed editing which is perhaps too helpful, but it hasn't personally helped my scores overly much.
+Implemented with a standard Trie.  Fairly fast at solving about 6,500 standard boards/second on a 2.8GHz cpu.  Uses dictionary directed editing which is perhaps too helpful, but it hasn't personally helped my scores overly much.
 
 * Current command line options:
 ```

@@ -33,6 +33,7 @@ public class Trie {
             map = t.map;
         }
         t.setEnd(true);   // mark last node as a whole word
+        t.setWord(new String(a));
         this.count++;
     }
 

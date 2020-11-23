@@ -9,12 +9,16 @@ import static jgc.Trie.LAST_CHAR;
 public class TrieNode {
     public TrieNode[] map;  // assumes small range
 
-    @Setter // creates isEnd() not getEnd()
+    @Setter // creates isEnd()
     @Getter
     private boolean end;    // is leaf node
 
+    @Setter
+    @Getter
+    private String word;    // optimization for constructing words from TrieNode
+
     public TrieNode(){
-        // Simple array[25] plus a flag.  Note that each node doesn't know what word it represents.
+        // Simple array[26]
         map = new TrieNode[LAST_CHAR - FIRST_CHAR + 1];
     }
 }

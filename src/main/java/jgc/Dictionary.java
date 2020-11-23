@@ -268,13 +268,9 @@ public class Dictionary {
      * @param word - optional word to traverse
      * @return
      */
-    private TrieNode findWordTree(TrieNode tnode, char c, String word) {
+    public TrieNode findWordTree(TrieNode tnode, char c, String word) {
         char[] a = (word != null) ? word.toCharArray() : null;
-        tnode = trie.findNode(tnode, a, c);
-        if (tnode == null) {
-            return null;
-        }
-        return tnode;
+        return trie.findNode(tnode, a, c);
     }
 
     protected String[] getWords() {
