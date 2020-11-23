@@ -1,5 +1,9 @@
 package jgc;
 
+import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -12,6 +16,7 @@ public class Trie {
     public static char FIRST_CHAR = 'a';
     public static char LAST_CHAR = 'z';
 
+    @Getter
     private TrieNode root = new TrieNode();
     private int count = 0;  // number of words (leaf nodes)
 
@@ -91,4 +96,25 @@ public class Trie {
             }
         }
     }
+
+    public List<String> extractSolution() {
+        List<String> list = new ArrayList<>();
+        extractSolution(list, root, new char[100], 0);
+        return list;
+    }
+
+    private void extractSolution(List<String> list, TrieNode node, char[] word, int k) {
+        if (node.isData()) {
+            node.setData(false);
+            list.add(new String(word, 0, k));
+        }
+        for (char c = FIRST_CHAR; c <= LAST_CHAR; c++) {
+            if (node.map[c - FIRST_CHAR] != null) {
+                word[k] = c;
+                extractSolution(list, node.map[c - FIRST_CHAR], word, k + 1);
+                word[k] = 0;
+            }
+        }
+    }
+
 }

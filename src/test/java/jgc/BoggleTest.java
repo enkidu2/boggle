@@ -97,8 +97,9 @@ class BoggleTest {
         int[] size = {0, 0, 0, 0, 0};
         int[] ssize = {0, 0, 0, 0, 0};
 
-        int LOOPMAX = 5;
-        int SOLVEMAX = 2000;
+        int LOOPMAX = 3;
+        // int SOLVEMAX = 2000;
+        int SOLVEMAX = 20;
 
         for (int loop = 1; loop <= LOOPMAX; loop++) {
             int j = 0;

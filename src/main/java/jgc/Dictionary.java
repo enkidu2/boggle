@@ -280,4 +280,12 @@ public class Dictionary {
     protected String[] getWords() {
         return trie.extractWords();
     }
+
+    public TrieNode getRootNode() {
+        return trie.getRoot();
+    }
+
+    public Trie getTrie() {
+        return trie;
+    }
 }
