@@ -9,7 +9,7 @@ Requires the following dictionary packages to be installed:
 
 Easily adaptable to any set of dictionaries with a config file.
 
-Implemented with a standard Trie.  Fairly fast at solving about 6,500 standard boards/second on a 2.8GHz cpu.  Uses dictionary directed editing which is perhaps too helpful, but it hasn't personally helped my scores overly much.
+Implemented with a standard Trie.  Fairly fast at solving about 9,300 standard boards/second on four 2.8GHz cores.  Uses dictionary directed editing which is perhaps too helpful, but it hasn't personally helped my scores overly much.
 
 * Current command line options:
 ```
@@ -25,6 +25,8 @@ Game of Boggle (c) 1972 Parker Brothers
   -l, --logLevel=<logLevel> Logging level, one of: error, warn, info, debug,
                               trace
   -n, --num=<N>             Board size, an integer value between 3 and 7
+  -p, --processes=<numThreads>
+                            Size of thread pool.
   -s, --swing               Create Swing UI.  The default (false) is to use a
                               curses text terminal.
   -t, --time=<time>         Time limit in seconds.  The default is 180s.

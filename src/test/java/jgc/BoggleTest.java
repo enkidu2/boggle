@@ -58,9 +58,9 @@ class BoggleTest {
     @Test
     void fillBoard() {
         Boggle b = getBoggle();
-        assertNull(b.board);
+        assertNull(b._board);
         b.fillBoard();
-        assertNotNull(b.board);
+        assertNotNull(b._board);
         b.close();
     }
 
@@ -70,12 +70,12 @@ class BoggleTest {
         String x = "tslneiaentrtbeso";
         b.boardString = x;
         b.fillBoard();
-        assertEquals(4, b.board.length);
-        assertEquals(4, b.board[0].length);
-        assertEquals('t', b.board[0][0]);
-        assertEquals('o', b.board[3][3]);
+        assertEquals(4, b._board.length);
+        assertEquals(4, b._board[0].length);
+        assertEquals('t', b._board[0][0]);
+        assertEquals('o', b._board[3][3]);
         int i = 0;
-        for (char bs : b.boardToString(b.board).toCharArray()) {
+        for (char bs : b.boardToString(b._board).toCharArray()) {
             assertEquals(x.charAt(i++), bs);
         }
         b.close();
@@ -109,6 +109,8 @@ class BoggleTest {
                 b.boardString = x;
                 b.fillBoard();
                 Set<String> sset = null;
+                System.gc();
+                try {Thread.sleep(300); } catch(Exception e) {}
                 long start = System.currentTimeMillis();
                 for (int i = 0; i < SOLVEMAX; i++) {
                     b.solve();
@@ -132,13 +134,15 @@ class BoggleTest {
         }
         int j = 0;
         long vscore = 0;
+        long best = 0;
         for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
             System.out.println("dictionary:    " + ds + " (" + size[j] + "), \tsolution size: " + ssize[j] +
-                    ", \tbest rate: " + perfs[j] + "/sec\tvariance: " + (variance[j] / (LOOPMAX-1)));
+                    ", \tbest rate: " + perfs[j] + "/sec\tavg variance: " + (variance[j] / (LOOPMAX-1)));
             vscore += (variance[j] / LOOPMAX);
+            best += perfs[j];
             j++;
         }
-        System.out.println("total variance: " + vscore);
+        System.out.println("total variance: " + vscore + "\tavg rate: " + (best / j));
     }
 
     @Test

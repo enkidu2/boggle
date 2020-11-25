@@ -11,7 +11,8 @@ import picocli.CommandLine.*;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,9 @@ public class Boggle implements Callable<Integer> {
 
     @Option(names = {"-d", "--dict"}, description = "Dictionary size, one of: ${COMPLETION-CANDIDATES}.", defaultValue = "M")
     protected Dictionary.DictSize dictSize;
+
+    @Option(names = {"-p", "--processes"}, description = "Size of thread pool.", defaultValue = "3")
+    protected int numThreads;
 
     @Option(names = {"-bj", "--boardJson"}, description = "Preset board in JSON format")
     protected String boardJson;
@@ -131,7 +135,7 @@ public class Boggle implements Callable<Integer> {
     String[][] allDice = { null, null, null, threeDice, fourDice, fiveDice, sixDice, sevenDice };
 
     char[][] dice;              // dice for NxN board
-    char[][] board;             // current board
+    char[][] _board;             // current board
     Dictionary dict;            // dictionary, including word trie
     TermServices ts;            // display routines
     Set<String> solutionSet;    // set of all answers
@@ -142,6 +146,7 @@ public class Boggle implements Callable<Integer> {
 
     Set<String> guessSet;       // set of guesses
     List<String> guessList;     // duplicate ordered list of guesses
+    ExecutorService threadPool; // thread pool
 
     public Boggle() {
     }
@@ -158,6 +163,10 @@ public class Boggle implements Callable<Integer> {
         setLogLevel(logLevel);
         dice = buildDice(N);
         dict = Dictionary.getDictionary(dictSize);
+        if (numThreads <= 0 || numThreads > 128) {
+            throw new ParameterException(spec.commandLine(), "--processes must be >= 1 and <= 128 ");
+        }
+        threadPool = Executors.newFixedThreadPool(numThreads);
 
         // Place guesses in two locations: a set and an ordered list.  A LinkedHashMap can't do this
         // more efficiently, assuming that we'll never have more than a few dozen guesses.
@@ -205,15 +214,15 @@ public class Boggle implements Callable<Integer> {
      */
     protected void fillBoard() {
         if (StringUtils.isNotEmpty(boardJson)) {
-            board = jsonToBoard(boardJson);
-            N = board.length;
+            _board = jsonToBoard(boardJson);
+            N = _board.length;
         }
         else if (StringUtils.isNotEmpty(boardString)) {
-            board = stringToBoard(boardString);
-            N = board.length;
+            _board = stringToBoard(boardString);
+            N = _board.length;
         }
         else {
-            board = new char[N][N];
+            _board = new char[N][N];
             List<char[]> deck = new ArrayList<char[]>();
             for (char[] die : dice) {
                 deck.add(die);
@@ -226,7 +235,7 @@ public class Boggle implements Callable<Integer> {
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j < N; j++) {
                     char[] die = shuffled.get(k++);
-                    board[i][j] = die[rand.nextInt(DIE_SIZE)];
+                    _board[i][j] = die[rand.nextInt(DIE_SIZE)];
                 }
             }
         }
@@ -236,7 +245,7 @@ public class Boggle implements Callable<Integer> {
      * Convert the board to a list of strings.
      * @return
      */
-    protected List<String> getBoardDisplayString() {
+    protected List<String> getBoardDisplayString(char[][] board) {
         List<String> list = new ArrayList<>();
         String line = "+---+";
         for (int i = 1; i < N; i++) {
@@ -267,8 +276,8 @@ public class Boggle implements Callable<Integer> {
         log.info("current score: " + score(guessSet));
         log.info("max word: " + solutionMax);
         log.info("max word score: " + score(solutionMax));
-        log.info("board string: " + boardToString(board));
-        log.info("board json: " + boardToJson(board));
+        log.info("board string: " + boardToString(_board));
+        log.info("board json: " + boardToJson(_board));
         log.info("solution list: " + new Gson().toJson(solutionList));
         log.info("guess set: " + new Gson().toJson(guessSet));
         log.info("---------- end summary ----------");
@@ -283,7 +292,7 @@ public class Boggle implements Callable<Integer> {
     static int[] moves = {0,-1,  1,-1,  1,0,  1,1,  0,1,  -1,1,  -1,0,  -1,-1};
 
     // are the coords in range and is that board location empty?
-    private boolean isValid(int i, int j) {
+    private boolean isValid(char[][] board, int i, int j) {
         if (i < 0 || i >= N || j < 0 || j >= N) return false;
         return board[i][j] != 0;    // == 0 if already visited
     }
@@ -299,24 +308,39 @@ public class Boggle implements Callable<Integer> {
      *
      * @return
      */
-    // uses board, dict.trie
     protected void solve() {
-        Set<String> set = new HashSet<>(300);
-        // using TreeSet is twice as slow as using a HashSet/ArrayList combo
-        char[] buf = new char[N*N+1];
+        final Set<String> solSet = ConcurrentHashMap.newKeySet();
+        List<Callable<Void>> calls = new ArrayList<>(N*N+1);
         for (int i = 0; i < N; i++) {
+            final int ii = i;
             for (int j = 0; j < N; j++) {
-                solve(buf, i, j, 0, null, set);
+                final int jj = j;
+                calls.add(() -> solvePosition(solSet, ii, jj));
             }
         }
-        this.solutionSet = set;
-        this.solutionList = new ArrayList(set);
+
+        try {
+            threadPool.invokeAll(calls);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        this.solutionSet = solSet;
+        this.solutionList = new ArrayList(solSet);
         Collections.sort(this.solutionList);
         this.solutionDictionary = Dictionary.getDictionary(this.solutionList);
     }
 
+    // thread safe solve - uses local copy of board & buffer
+    protected Void solvePosition(Set<String> set, int i, int j) {
+        char[][] boardCopy = Arrays.stream(_board).map(char[]::clone).toArray(char[][]::new);
+        char[] buf = new char[N*N+1];
+        solve(boardCopy, buf, i, j, 0, null, set);
+        return null;
+    }
+
     /**
-     * Find all solutions on a board for all dictionary matches.
+     * Find all solutions for a single board position
      * @param soFar The current word we're building
      * @param oldi  Previous i coord
      * @param oldj  Previous j coord
@@ -324,7 +348,7 @@ public class Boggle implements Callable<Integer> {
      * @param root  Current dictionary node
      * @param set   A set of all the words found thus far
      */
-    protected void solve(char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set) {
+    protected void solve(char[][] board, char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set) {
         if (root != null && root.isEnd() && k >= wordLen) {
             set.add(root.getWord());
         } // keep going, as the word may continue to grow
@@ -334,21 +358,21 @@ public class Boggle implements Callable<Integer> {
             TrieNode q = dict.findWordTree(root, 'u');
             if (q != null) {
                 soFar[k] = 'u';
-                solve(soFar, oldi, oldj, k + 1, q, set);
+                solve(board, soFar, oldi, oldj, k + 1, q, set);
             }
         }
 
         for (int ix = 0; ix < moves.length; ix += 2) {
             int i = oldi + moves[ix];
             int j = oldj + moves[ix + 1];
-            if (!isValid(i, j)) {
+            if (!isValid(board, i, j)) {
                 continue;
             }
             TrieNode fragment = dict.findWordTree(root, board[i][j], null);
             if (fragment != null) {
                 soFar[k] = board[i][j];
                 board[i][j] = 0;    // no going back onto a square
-                solve(soFar, i, j, k + 1, fragment, set);
+                solve(board, soFar, i, j, k + 1, fragment, set);
                 board[i][j] = soFar[k];
             }
         }
@@ -389,7 +413,7 @@ public class Boggle implements Callable<Integer> {
      */
 
     private void displayBoard() {
-        ts.displayBoard(getBoardDisplayString());
+        ts.displayBoard(getBoardDisplayString(_board));
     }
 
     private String boardToJson(char[][] b) {
