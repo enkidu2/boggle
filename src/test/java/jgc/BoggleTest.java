@@ -91,14 +91,15 @@ class BoggleTest {
      */
     @Test
     void solvePerformance() {
+        final int LOOPMAX = 5;
+        final int SOLVEMAX = 2000;
+
         int[] expected = {83, 102, 113, 171, 229 };
         long[] perfs = {0, 0, 0, 0, 0};
-        long[] variance = {0, 0, 0, 0, 0};
+        long[][] allRates = new long[LOOPMAX][5];
         int[] size = {0, 0, 0, 0, 0};
         int[] ssize = {0, 0, 0, 0, 0};
 
-        int LOOPMAX = 5;
-        int SOLVEMAX = 2000;
 
         for (int loop = 1; loop <= LOOPMAX; loop++) {
             int j = 0;
@@ -111,17 +112,15 @@ class BoggleTest {
                 Set<String> sset = null;
                 System.gc();
                 try {Thread.sleep(300); } catch(Exception e) {}
-                long start = System.currentTimeMillis();
+                long start2 = System.nanoTime();
                 for (int i = 0; i < SOLVEMAX; i++) {
                     b.solve();
                     sset = b.solutionSet;
                 }
-                long end = System.currentTimeMillis();
-                long time = end - start;
-                long rate = (long)((double)SOLVEMAX * 1000.0 / (double)time);
-                if (loop > 2) {
-                    variance[j] += Math.abs(perfs[j] - rate);
-                }
+                long end2 = System.nanoTime();
+                long time = end2 - start2;
+                long rate = (long)(((double)SOLVEMAX * 1000000000.0) / (double)time);
+                allRates[j][loop-1] = rate;
                 if (rate > perfs[j]) {
                     perfs[j] = rate;
                 }
@@ -136,13 +135,17 @@ class BoggleTest {
         long vscore = 0;
         long best = 0;
         for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
+            long avg = 0;
+            for (long r : allRates[j]) {
+                avg += Math.abs(perfs[j] - r);
+            }
             System.out.println("dictionary:    " + ds + " (" + size[j] + "), \tsolution size: " + ssize[j] +
-                    ", \tbest rate: " + perfs[j] + "/sec\tavg variance: " + (variance[j] / (LOOPMAX-1)));
-            vscore += (variance[j] / LOOPMAX);
+                    ", \tbest rate: " + perfs[j] + "/sec\tavg variance: " + (avg / LOOPMAX));
+            vscore += (avg/LOOPMAX);
             best += perfs[j];
             j++;
         }
-        System.out.println("total variance: " + vscore + "\tavg rate: " + (best / j));
+        System.out.println("total avg variance: " + vscore + "\tavg rate: " + (best / j));
     }
 
     @Test

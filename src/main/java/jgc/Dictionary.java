@@ -94,21 +94,16 @@ public class Dictionary {
         this.nonASCIIPattern = Pattern.compile(".*[^0-9A-Za-z]+.*");
         if (all == null) {
             String dictPath = getDictPath(dictSize);
-            all = readDictionary(dictPath);
+            this.trie = readDictionary(dictPath);
             long end = System.currentTimeMillis();
-            log.debug("time to read dictionary file: " + dictPath + ": " + (end - start) + " ms.");
+            log.debug("time to init dict: " + (end - start) + " ms.");
         }
         else {
-            log.debug("dictionary init with word list");
+            this.trie = new Trie();
+            for (String s : all) {
+                this.trie.insert(s);
+            }
         }
-
-        this.trie = new Trie();
-        for (String s : all) {
-            this.trie.insert(s);
-        }
-
-        long end = System.currentTimeMillis();
-        log.debug("time to init dict: " + (end - start) + " ms.");
         log.debug("dict size: " + this.trie.getCount());
     }
 
@@ -122,30 +117,21 @@ public class Dictionary {
      * @param fname
      * @return
      */
-    private List<String> readDictionary(String fname) {
-        ArrayList<String> all = new ArrayList<String>();
-        try (BufferedReader reader = Files.newBufferedReader(Paths.get(fname))) {
-            String word;
-            while ((word = reader.readLine()) != null) {
+    private Trie readDictionary(String fname) {
+        Trie trie = new Trie();
+        try {
+            Files.lines(Paths.get(fname)).forEach(word -> {
                 word = stripAccents(word);
-                if (isUpperCased(word)) {
-                    continue;   // skip proper nouns and mixed cased words, such as mHz
+                if (!isUpperCased(word) && !nonASCIIPattern.matcher(word).matches()) {
+                    trie.insert(word);
                 }
-                if (nonASCIIPattern.matcher(word).matches()) {
-                    // useful to see how much of dictionary is being ignored (mostly apostrophes)
-                    // log.debug("elided: " + word);
-                    continue;   // skip contractions, foreign letters
-                }
-                if (word.contains("khz")) {
-                    int ii = 0;
-                }
-                all.add(word);
-            }
+            });
         } catch(IOException e){
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        return all;
+
+        return trie;
     }
 
     /**
