@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -91,7 +93,12 @@ class BoggleTest {
      */
     @Test
     void solvePerformance() {
-        final int LOOPMAX = 5;
+        solvePerformance2(true);
+        solvePerformance2(false);
+    }
+
+    void solvePerformance2(boolean trialRun) {
+        int LOOPMAX = 5;
         final int SOLVEMAX = 2000;
 
         int[] expected = {83, 102, 113, 171, 229 };
@@ -100,18 +107,33 @@ class BoggleTest {
         int[] size = {0, 0, 0, 0, 0};
         int[] ssize = {0, 0, 0, 0, 0};
 
+        String title = "";
+        if (trialRun) {
+            LOOPMAX = 2;
+            title = "trial run";
+        }
+        Map<Dictionary.DictSize, Boggle> dicts = new HashMap<>();
+        for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
+            Boggle b = getBoggle(ds);
+            dicts.put(ds, b);
+        }
 
         for (int loop = 1; loop <= LOOPMAX; loop++) {
             int j = 0;
-            System.out.println("---------------- loop #" + loop);
+            System.out.println("---------------- " + title + " loop #" + loop);
             for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
-                Boggle b = getBoggle(ds);
+                Boggle b = dicts.get(ds);
                 String x = "tleowsaitezpnsyi";      // typical: 102 words using M
                 b.boardString = x;
                 b.fillBoard();
                 Set<String> sset = null;
-                System.gc();
-                try {Thread.sleep(300); } catch(Exception e) {}
+                if (!trialRun) {
+                    System.gc();
+                    try {
+                        Thread.sleep(500);
+                    } catch (Exception e) {
+                    }
+                }
                 long start2 = System.nanoTime();
                 for (int i = 0; i < SOLVEMAX; i++) {
                     b.solve();
@@ -131,21 +153,23 @@ class BoggleTest {
                 b.close();
             }
         }
-        int j = 0;
-        long vscore = 0;
-        long best = 0;
-        for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
-            long avg = 0;
-            for (long r : allRates[j]) {
-                avg += Math.abs(perfs[j] - r);
+        if (!trialRun) {
+            int j = 0;
+            long vscore = 0;
+            long best = 0;
+            for (Dictionary.DictSize ds : Dictionary.DictSize.values()) {
+                long avg = 0;
+                for (long r : allRates[j]) {
+                    avg += Math.abs(perfs[j] - r);
+                }
+                System.out.println("dictionary:    " + ds + " (" + size[j] + "), \tsolution size: " + ssize[j] +
+                        ", \tbest rate: " + perfs[j] + "/sec\tavg variance: " + (avg / LOOPMAX));
+                vscore += (avg / LOOPMAX);
+                best += perfs[j];
+                j++;
             }
-            System.out.println("dictionary:    " + ds + " (" + size[j] + "), \tsolution size: " + ssize[j] +
-                    ", \tbest rate: " + perfs[j] + "/sec\tavg variance: " + (avg / LOOPMAX));
-            vscore += (avg/LOOPMAX);
-            best += perfs[j];
-            j++;
+            System.out.println("total avg variance: " + vscore + "\tavg rate: " + (best / j));
         }
-        System.out.println("total avg variance: " + vscore + "\tavg rate: " + (best / j));
     }
 
     @Test

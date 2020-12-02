@@ -289,7 +289,7 @@ public class Boggle implements Callable<Integer> {
      *      6-2
      *      543
      */
-    static int[] moves = {0,-1,  1,-1,  1,0,  1,1,  0,1,  -1,1,  -1,0,  -1,-1};
+    static final int[] moves = {0,-1,  1,-1,  1,0,  1,1,  0,1,  -1,1,  -1,0,  -1,-1};
 
     // are the coords in range and is that board location empty?
     private boolean isValid(char[][] board, int i, int j) {
@@ -309,13 +309,13 @@ public class Boggle implements Callable<Integer> {
      * @return
      */
     protected void solve() {
-        final Set<String> solSet = ConcurrentHashMap.newKeySet();
+        final Set<TrieNode> solNodes = ConcurrentHashMap.newKeySet();   // expensive synchronized & partitioned map
         List<Callable<Void>> calls = new ArrayList<>(N*N+1);
         for (int i = 0; i < N; i++) {
             final int ii = i;
             for (int j = 0; j < N; j++) {
                 final int jj = j;
-                calls.add(() -> solvePosition(solSet, ii, jj));
+                calls.add(() -> solvePosition(solNodes, ii, jj));
             }
         }
 
@@ -325,14 +325,21 @@ public class Boggle implements Callable<Integer> {
             e.printStackTrace();
         }
 
-        this.solutionSet = solSet;
-        this.solutionList = new ArrayList(solSet);
+        Set<String> solutionSet = new HashSet<>();
+        List<String> solutionList = new ArrayList<>();
+        for (TrieNode tnode : solNodes) {
+            tnode.setUsed(false);
+            solutionSet.add(tnode.getWord());
+            solutionList.add(tnode.getWord());
+        }
+        this.solutionSet = solutionSet;
+        this.solutionList = solutionList;
         Collections.sort(this.solutionList);
         this.solutionDictionary = Dictionary.getDictionary(this.solutionList);
     }
 
     // thread safe solve - uses local copy of board & buffer
-    protected Void solvePosition(Set<String> set, int i, int j) {
+    protected Void solvePosition(Set<TrieNode> set, int i, int j) {
         char[][] boardCopy = Arrays.stream(_board).map(char[]::clone).toArray(char[][]::new);
         char[] buf = new char[N*N+1];
         solve(boardCopy, buf, i, j, 0, null, set);
@@ -348,9 +355,10 @@ public class Boggle implements Callable<Integer> {
      * @param root  Current dictionary node
      * @param set   A set of all the words found thus far
      */
-    protected void solve(char[][] board, char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<String> set) {
-        if (root != null && root.isEnd() && k >= wordLen) {
-            set.add(root.getWord());
+    protected void solve(char[][] board, char[] soFar, int oldi, int oldj, int k, TrieNode root, Set<TrieNode> set) {
+        if (root != null && root.isEnd() && k >= wordLen && !root.isUsed()) {
+            root.setUsed(true);
+            set.add(root);
         } // keep going, as the word may continue to grow
 
         // if we're at 'q', try adding an optional 'u' and continue - ad also continue w/o the 'u'

@@ -13,6 +13,10 @@ public class TrieNode {
     @Getter
     private boolean end;    // is leaf node
 
+    @Setter // creates isEnd()
+    @Getter
+    private boolean used;    // is leaf node
+
     @Setter
     @Getter
     private String word;    // optimization for constructing words from TrieNode
