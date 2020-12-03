@@ -6,6 +6,11 @@ import lombok.Setter;
 import static jgc.Trie.FIRST_CHAR;
 import static jgc.Trie.LAST_CHAR;
 
+/**
+ * These are now consumed at all levels of Boggle to aid in performance.  Efficient solution finding
+ * can't be obtained w/o traversing tries manually and decorating the tree (get/setUsed) along the
+ * way.
+ */
 public class TrieNode {
     public TrieNode[] map;  // assumes small range
 
@@ -13,9 +18,9 @@ public class TrieNode {
     @Getter
     private boolean end;    // is leaf node
 
-    @Setter // creates isEnd()
+    @Setter // creates isUsed()
     @Getter
-    private boolean used;    // is leaf node
+    private boolean used;    // has been used
 
     @Setter
     @Getter

@@ -11,8 +11,10 @@ import picocli.CommandLine.*;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -24,14 +26,14 @@ import java.util.stream.Collectors;
  *  try a swing/awt UI?
  *  too many errors are swallowed
  *  foreign dictionaries - inject dictionaries
+ *      -- don't allow foreign letters as they're too hard to type on standard keyboards...
  *  bugs:
  *    hitting return multiple times scrolls down
  *    hitting return multiple times gets stuck and doesn't go to next col
- *    upper case board strings crash
  *    make top of third column higher
  *    make bottom of third column higher
  *    clean up FIX THIS comments
- *    clean up access protections
+ *    clean up access protections - why use protected?
  */
 
 @Command(name = "boggle", mixinStandardHelpOptions = true, version = "boggle 1.0",
@@ -42,7 +44,7 @@ public class Boggle implements Callable<Integer> {
     private static final Logger log = LogManager.getLogger(Boggle.class);
 
     @Spec
-    Model.CommandSpec spec; // injected by picocli
+    Model.CommandSpec spec; // command line options injected by picocli
 
     @Option(names = {"-n", "--num"}, description = "Board size, an integer value between 3 and 7", defaultValue = "4")
     protected Integer N;
@@ -416,10 +418,6 @@ public class Boggle implements Callable<Integer> {
         return words.stream().max(Comparator.comparingInt(String::length)).get();
     }
 
-    /**
-     * Need: init screen, display board, display guesses, display score, input words, time left, words found, words missed
-     */
-
     private void displayBoard() {
         ts.displayBoard(getBoardDisplayString(_board));
     }
@@ -594,7 +592,8 @@ public class Boggle implements Callable<Integer> {
      *     read word and score it - else show it as invalid
      *     allow for pause, continue, quit, help
      * } until timeout
-     * show all solutions, best word
+     * meanwhile, the timer loop separately displays top and center and interrupts play upon timeout
+     * show all solutions, best word, score, words found and missed
      * reset screen, exit with full solutions displayed.
      */
     protected void play() {

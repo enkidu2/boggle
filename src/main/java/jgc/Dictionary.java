@@ -1,15 +1,13 @@
 package jgc;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Reads a list of words, filters or converts non-ASCII characters and places most of them into a Trie.
@@ -29,7 +27,6 @@ public class Dictionary {
 
     private Trie trie;
     private DictSize dictSize;
-    private Pattern nonASCIIPattern;
 
     public static synchronized Dictionary getDictionary(DictSize dictSize) {
         if (dictionary != null && dictionary.getSize() == dictSize) {
@@ -63,6 +60,7 @@ public class Dictionary {
 
     /**
      * using locally installed dictionaries from wamerican-{small, large, huge, insane} packages.
+     * Perhaps /usr/share/dict/words should be used?
      * @param size
      * @return
      */
@@ -84,14 +82,13 @@ public class Dictionary {
 
     /**
      * Reads the dictionary, discarding irregular words, and converting the rest into a single Trie.
-     * For a 500,000 word dictionary (XXL), this takes about 200ms on an old laptop.
+     * For a 500,000 word dictionary (XXL), this takes about 140ms on an old laptop.
      * @param dictSize
      * @param all
      */
     private void init(DictSize dictSize, List<String> all) {
         long start = System.currentTimeMillis();
         this.dictSize = dictSize;
-        this.nonASCIIPattern = Pattern.compile(".*[^0-9A-Za-z]+.*");
         if (all == null) {
             String dictPath = getDictPath(dictSize);
             this.trie = readDictionary(dictPath);
@@ -121,8 +118,8 @@ public class Dictionary {
         Trie trie = new Trie();
         try {
             Files.lines(Paths.get(fname)).forEach(word -> {
-                word = stripAccents(word);
-                if (!isUpperCased(word) && !nonASCIIPattern.matcher(word).matches()) {
+                word = checkWord(word);
+                if (StringUtils.isNotEmpty(word)) {
                     trie.insert(word);
                 }
             });
@@ -168,16 +165,14 @@ public class Dictionary {
      * requirements.
      *
      * @param word
-     * @return
+     * @return Cleaned up word, or null if the word is not acceptable
      */
-    private String stripAccents(String word) {
+    private String checkWord(String word) {
         char[] buf = word.toCharArray();
         boolean changed = false;
         for (int i = 0; i < buf.length; i++) {
             char c = buf[i];
             switch (c) {
-                case '\'':
-                    continue;   // skip contractions
                 case 'å':
                 case 'ä':
                 case 'à':
@@ -221,6 +216,13 @@ public class Dictionary {
                     buf[i] = 'u';
                     changed = true;
                     break;
+            }
+            if (buf[i] < Trie.FIRST_CHAR || buf[i] > Trie.LAST_CHAR) {
+                // skip proper nouns and mixed cased words, such as "mHz"
+                // also skip contractions, such as "shouldn't"
+                // and skip any foreign words which have been missed, such as "garçon"
+                // log.debug("elided: " + new String(buf));
+                return null;
             }
         }
         if (changed) {
