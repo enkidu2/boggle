@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.CharBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -163,6 +164,65 @@ public class TermServices {
      * display the given board in the middle of the terminal
      * @param board
      */
+    void displayBoard(char[][] board, Boggle.Reach[][] matchBoard) {
+        List<String> template = getBoardTemplate(board);
+        boardHeight = template.size();
+        boardWidth = template.get(0).length();
+        boardRight = BOARD_X + boardWidth;
+        int N = board.length;
+        try {
+            int row = BOARD_Y;
+            for (String str : template) {
+                tGraphics.putString(BOARD_X, row++, str + "    ");
+            }
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+                    int x = BOARD_X + 2 + j * 4;
+                    int y = BOARD_Y + 1 + i * 2;
+                    if (matchBoard != null) {
+                        if (matchBoard[i][j] == Boggle.Reach.REACHED) {
+                            tGraphics.enableModifiers(SGR.REVERSE);
+                        } else if (matchBoard[i][j] == Boggle.Reach.MORE) {
+                            tGraphics.enableModifiers(SGR.REVERSE);
+                            tGraphics.enableModifiers(SGR.BLINK);
+                        }
+                        tGraphics.putString(x, y, "" + Character.toUpperCase(board[i][j]));
+                        tGraphics.disableModifiers(SGR.REVERSE);
+                        tGraphics.disableModifiers(SGR.BLINK);
+                    }
+                }
+            }
+            terminal.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    List<String> getBoardTemplate(char[][] board) {
+        int N = board.length;
+        List<String> list = new ArrayList<>();
+        String line = "+---+";
+        for (int i = 1; i < N; i++) {
+            line += "---+";
+        }
+
+        list.add(line);
+        int j = 0;
+        for (char[] row : board) {
+            StringBuilder buf = new StringBuilder();
+            for (char c : row) {
+                buf.append("| ");
+                buf.append(Character.toUpperCase(c));
+                buf.append(" ");
+            }
+            j++;
+            buf.append("|");
+            list.add(buf.toString());
+            list.add(line);
+        }
+        return list;
+    }
+
     void displayBoard(List<String> board) {
         boardHeight = board.size();
         boardWidth = board.get(0).length();
@@ -172,6 +232,7 @@ public class TermServices {
             for (String str : board) {
                 tGraphics.putString(BOARD_X, row++, str + "    ");
             }
+
             terminal.flush();
         } catch (IOException e) {
             e.printStackTrace();
@@ -270,14 +331,18 @@ public class TermServices {
     }
 
     void message(String msg) {
-        message(msg, false);
+        message(msg, false, 0);
     }
 
-    protected void message(String msg, boolean reverse) {
+    void message2(String msg) {
+        message(msg, false, 1);
+    }
+
+    protected void message(String msg, boolean reverse, int yOffset) {
         if (reverse) {
             tGraphics.enableModifiers(SGR.REVERSE);
         }
-        tGraphics.putString(boardRight + 4,0, msg + "     ");
+        tGraphics.putString(boardRight + 4,yOffset, msg + "     ");
         try {
             terminal.flush();
         } catch (IOException e) {
@@ -375,6 +440,19 @@ public class TermServices {
                                 case 'd':
                                     b.logData();
                                     return new ReadValue(ReadType.CONTINUE);
+                                case 'x':
+                                    if (!b.assist) {
+                                        b.assist = true;
+                                        message2("enabled assist mode");
+                                    } else if (!b.extraAssist) {
+                                        b.extraAssist = true;
+                                        message2("enabled extra assist mode");
+                                    } else {
+                                        b.assist = false;
+                                        b.extraAssist = false;
+                                        message2("disabled assist mode");
+                                    }
+                                    return new ReadValue(ReadType.CONTINUE);
                                 default:
                                     // fall through to interrupt
                             }
@@ -397,10 +475,10 @@ public class TermServices {
                     case Delete:
                     case Backspace:
                         if (buf.length() > 0) {
-                            if (doEcho) {
-                                showSingleWord(guessCount, " ", false);
-                            }
                             buf.deleteCharAt(buf.length() - 1);
+                            if (doEcho) {
+                                showSingleWord(guessCount, buf.toString() + " ", false);
+                            }
                         }
                         break;
                     case Enter:
@@ -416,6 +494,9 @@ public class TermServices {
                 boolean useReverse = b != null && b.isBadPartial(word);
                 if (doEcho) {
                     showSingleWord(guessCount, word, useReverse);
+                    if (b.needsAssist()) {
+                        displayBoard(b._board, b.boardReach(word));
+                    }
                 }
             } catch (RuntimeException r) {
                 if (r.getMessage() != null && r.getMessage().contains("interrupt")) {

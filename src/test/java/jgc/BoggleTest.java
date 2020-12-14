@@ -91,7 +91,7 @@ class BoggleTest {
      *
      * On my 4 year old laptop (2.8GHz) it runs at 5700->6800 solutions/sec with the standard dictionary.
      */
-    @Test
+    // @Test
     void solvePerformance() {
         solvePerformance2(true);
         solvePerformance2(false);
@@ -204,6 +204,68 @@ class BoggleTest {
         assertEquals(b.solutionList.size(), b.solutionSet.size());
         assertEquals("tst", b.solutionList.get(b.solutionSet.size() - 1));
     }
+
+    @Test
+    void testReach() {
+        Boggle b = getBoggle(Dictionary.DictSize.XXL);
+        String x = "tslneiaentrtbeso";
+        b.boardString = x;
+        b.fillBoard();
+        b.solve();
+        b.assist = true;
+        b.extraAssist = false;
+        int count = showReach(b, "sta");
+        assertEquals(4, count);
+        count = showReach(b, "start");
+        assertEquals(5, count);
+        count = showReach(b, "a");
+        assertEquals(1, count);
+        count = showReach(b, "x");
+        assertEquals(0, count);
+
+        Boggle.Reach[][] reach = b.boardReach("");
+        assertEquals(null, reach);
+    }
+
+
+    @Test
+    void testExtraReach() {
+        Boggle b = getBoggle(Dictionary.DictSize.L);
+        String x = "tslneiaentrtbeso";
+        b.boardString = x;
+        b.fillBoard();
+        b.solve();
+        b.assist = true;
+        b.extraAssist = false;
+        int count = showReach(b, "ben");
+        assertEquals(3, count);
+
+        b.extraAssist = true;
+        count = showReach(b, "ben");
+        assertEquals(4, count);
+
+        Boggle.Reach[][] reach = b.boardReach("");
+        assertEquals(null, reach);
+    }
+
+
+    int showReach(Boggle b, String word) {
+        Boggle.Reach[][] reach = b.boardReach(word);
+        int count = 0;
+        System.out.println("------- " + word);
+        for (int i = 0; i < reach.length; i++) {
+            System.out.println();
+            for (int j = 0; j < reach[0].length; j++) {
+                System.out.print(reach[i][j] + "\t");
+                if (reach[i][j] != Boggle.Reach.NONE) {
+                    count++;
+                }
+            }
+        }
+        System.out.println();
+        return count;
+    }
+
 
     @Test
     void isBadPartial() {

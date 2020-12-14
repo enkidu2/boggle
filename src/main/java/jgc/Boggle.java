@@ -73,6 +73,12 @@ public class Boggle implements Callable<Integer> {
     @Option(names = {"-bs", "--boardString"}, description = "Preset board in compact string format")
     protected String boardString;
 
+    @Option(names = {"-X"}, description = "Enable experimental assist features", defaultValue="false")
+    protected boolean assist;
+
+    @Option(names = {"-XX"}, description = "Enable extra assist", defaultValue="false")
+    protected boolean extraAssist;
+
     static final int DIE_SIZE = 6;        // size of each die
     static final int TIMER_PERIOD = 1000; // clock tic, in millis
 
@@ -163,6 +169,7 @@ public class Boggle implements Callable<Integer> {
      */
     void init(boolean useTermServices) {
         setLogLevel(logLevel);
+        // boardString = "tslneiaentrtbeso";
         dice = buildDice(N);
         dict = Dictionary.getDictionary(dictSize);
         if (numThreads <= 0 || numThreads > 128) {
@@ -258,7 +265,9 @@ public class Boggle implements Callable<Integer> {
         for (char[] row : board) {
             StringBuilder buf = new StringBuilder();
             for (char c : row) {
-                buf.append("| " + Character.toUpperCase(c) + " ");
+                buf.append("| ");
+                buf.append(Character.toUpperCase(c));
+                buf.append(" ");
             }
             buf.append("|");
             list.add(buf.toString());
@@ -388,6 +397,90 @@ public class Boggle implements Callable<Integer> {
         }
     }
 
+    enum Reach { NONE, REACHED, MORE }
+
+    /**
+     * Mark all board positions which the given word fragment may occupy.  Used to highlight word in
+     * progress.
+     * @param word
+     * @return A boolean mirror of the board, where each true may have been reached by the word.
+     */
+    protected Reach[][] boardReach(String word) {
+        if (StringUtils.isEmpty(word)) {
+            return null;
+        }
+        Reach[][] matchBoard = new Reach[N][N];
+        char[] wchars = word.toCharArray();
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                matchBoard[i][j] = Reach.NONE;
+            }
+        }
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                if (_board[i][j] == wchars[0] && reachCrawl(matchBoard, i, j, wchars, 0)) {
+                    matchBoard[i][j] = Reach.REACHED;
+                }
+            }
+        }
+        return matchBoard;
+    }
+
+    /**
+     * Recursive helper function for boardReach().
+     * @param matchBoard Where to record matches
+     * @param oldi Last matched row
+     * @param oldj Last matched column
+     * @return True if the current path matches word entirely
+     */
+    boolean reachCrawl(Reach[][] matchBoard, int oldi, int oldj, char[] word, int k) {
+        if (k >= word.length-1) {
+            if (extraAssist) {
+                TrieNode tnode = solutionDictionary.findWordTree(null, word);
+                if (tnode != null) {
+                    solutionCrawl(matchBoard, oldi, oldj, tnode);
+                }
+            }
+            return true;
+        }
+
+        boolean found = false;
+        for (int ix = 0; ix < moves.length; ix += 2) {
+            int newi = oldi + moves[ix];
+            int newj = oldj + moves[ix + 1];
+            if (!isValid(_board, newi, newj)) {
+                continue;
+            }
+            if (_board[newi][newj] == word[k+1] && reachCrawl( matchBoard, newi, newj, word, k+1)) {
+                matchBoard[newi][newj] = Reach.REACHED;
+                found = true;
+            }
+        }
+        return found;
+    }
+
+    /**
+     * After a board reach has found the word typed thus far, this optionally takes the crawl to
+     * the next level: which adjacent letters can be used to find a valid word?  This is shameless
+     * cheating.
+     * @param matchBoard Where to record new paths to investigate
+     * @param oldi Row of last letter of word
+     * @param oldj Col of last letter of word
+     * @param tnode The trie node of the word reached thus far
+     */
+    void solutionCrawl(Reach[][] matchBoard, int oldi, int oldj, TrieNode tnode) {
+        for (int ix = 0; ix < moves.length; ix += 2) {
+            int newi = oldi + moves[ix];
+            int newj = oldj + moves[ix + 1];
+            if (!isValid(_board, newi, newj)) {
+                continue;
+            }
+            if (solutionDictionary.findWordTree(tnode, _board[newi][newj]) != null) {
+                matchBoard[newi][newj] = Reach.MORE;
+            }
+        }
+    }
+
     /**
      * Standard Boggle scoring of words.  It's a shame that the word 'onomatopoeia' scores the same as the simpler
      * and much shorter: 'swimming'
@@ -416,10 +509,6 @@ public class Boggle implements Callable<Integer> {
      */
     protected String maxWord(Set<String> words) {
         return words.stream().max(Comparator.comparingInt(String::length)).get();
-    }
-
-    private void displayBoard() {
-        ts.displayBoard(getBoardDisplayString(_board));
     }
 
     private String boardToJson(char[][] b) {
@@ -509,7 +598,7 @@ public class Boggle implements Callable<Integer> {
     private void restartTimer() {
         ts.message("Type '?' for help");
         timer.cancel();
-        displayBoard();
+        ts.displayBoard(_board, null);
         displayScore(false);
         timer = newTimer();
     }
@@ -610,7 +699,7 @@ public class Boggle implements Callable<Integer> {
             // do nothing
         }
 
-        displayBoard();
+        ts.displayBoard(_board, null);
         ts.message("Type '?' for help");
         startTimer();
         String redo = null;     // word to rewrite, such as a previous error
@@ -620,6 +709,7 @@ public class Boggle implements Callable<Integer> {
         try {
             while (true) {
                 TermServices.ReadValue p = ts.readWord(guessSet.size(), true, this);
+                ts.displayBoard(_board, null);
                 switch(p.getType()) {
                     case STRING:
                         w = p.getValue();
@@ -681,7 +771,7 @@ public class Boggle implements Callable<Integer> {
         try {
             timer.cancel();
             ts.clear();
-            displayBoard();
+            ts.displayBoard(_board, null);
             displayScore(true);
             displaySolutionList();
             logData();
@@ -695,6 +785,10 @@ public class Boggle implements Callable<Integer> {
     private String getHelpMessage() {
         // strips non-printable formatting characters from help
         return spec.commandLine().getUsageMessage(Help.Ansi.OFF);
+    }
+
+    public boolean needsAssist() {
+        return assist || extraAssist;
     }
 
     /**

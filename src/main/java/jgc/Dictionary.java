@@ -245,6 +245,10 @@ public class Dictionary {
         return findWordTree(tnode, c, null);
     }
 
+    public TrieNode findWordTree(TrieNode tnode, char[] word) {
+        return trie.findNode(tnode, word, (char)0);
+    }
+
     /**
      *
      * Returns a Trie node which branches off the given Trie with a given character.  Used to traverse a Trie with a
@@ -260,6 +264,7 @@ public class Dictionary {
         char[] a = (word != null) ? word.toCharArray() : null;
         return trie.findNode(tnode, a, c);
     }
+
 
     protected String[] getWords() {
         return trie.extractWords();
